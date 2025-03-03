@@ -1,11 +1,7 @@
-# coding: utf-8
-# Author：WangTianRui
-# Date ：2020/8/18 10:27
-
 import torch
 import torch.nn.functional as F
 
-
+#计算逆短时傅里叶变换,在 ISTFT 类和模型输出信号恢复中使用。
 def istft(stft_matrix, hop_length=None, win_length=None, window='hann',
           center=True, normalized=False, onesided=True, length=None):
     # keunwoochoi's implementation
@@ -48,7 +44,7 @@ def istft(stft_matrix, hop_length=None, win_length=None, window='hann',
     for i in range(n_frames):
         sample = i * hop_length
         spec = stft_matrix[:, :, i]
-        iffted = torch.irfft(spec, signal_ndim=1, signal_sizes=(win_length,))
+        iffted = torch.fft.irfft(spec)
 
         ytmp = istft_window * iffted
         y[:, sample:(sample + n_fft)] += ytmp

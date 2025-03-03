@@ -1,7 +1,4 @@
-# coding: utf-8
-# Author：WangTianRui
-# Date ：2020/8/18 12:01
-
+#返回包含网络参数的字典。参数包括编码器、LSTM层、全连接层和解码器的通道数、卷积核大小、步长、填充等。
 def get_net_params():
     params = {}
     encoder_dim_start = 32
@@ -14,6 +11,7 @@ def get_net_params():
         encoder_dim_start * 8,
         encoder_dim_start * 8
     ]
+    #每层卷积核的尺寸。
     params["encoder_kernel_sizes"] = [
         (5, 2),
         (5, 2),
@@ -22,6 +20,7 @@ def get_net_params():
         (5, 2),
         (5, 2)
     ]
+    #卷积操作的步长 。
     params["encoder_strides"] = [
         (2, 1),
         (2, 1),
@@ -30,6 +29,7 @@ def get_net_params():
         (2, 1),
         (2, 1)
     ]
+    #卷积操作的填充。
     params["encoder_paddings"] = [
         (2, 0),
         (2, 0),

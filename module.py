@@ -1,40 +1,100 @@
-# coding: utf-8
-# Author：WangTianRui
-# Date ：2020/9/30 10:55
-
 
 from complex_progress import *
-import torchaudio_contrib as audio_nn
+#import torchaudio_contrib as audio_nn
 from utils import *
+import torchaudio
+import torch
 
-
+#用于计算短时傅里叶变换,在 DCCRN_ 模型中用于预处理输入信号。
 class STFT(nn.Module):
     def __init__(self, n_fft, hop_length, win_length):
         super().__init__()
-        self.n_fft, self.hop_length = n_fft, hop_length
-        self.stft = audio_nn.STFT(fft_length=self.n_fft, hop_length=self.hop_length, win_length=win_length)
+        self.n_fft = n_fft
+        self.hop_length = hop_length
+        #self.stft = audio_nn.STFT(fft_length=self.n_fft, hop_length=self.hop_length, win_length=win_length)
+        self.win_length = win_length
+        self.register_buffer("window", torch.hann_window(win_length))
 
     def forward(self, signal):
+        # with torch.no_grad():
+        #     x = self.stft(signal)
+        #     mag, phase = audio_nn.magphase(x, power=1.)
+        #
+        # mix = torch.stack((mag, phase), dim=-1)
+        # return mix.unsqueeze(1)
+        print("STFT signal.shape",signal.shape)
         with torch.no_grad():
-            x = self.stft(signal)
-            mag, phase = audio_nn.magphase(x, power=1.)
+            stft = torch.stft(
+                signal,
+                n_fft=self.n_fft,
+                hop_length=self.hop_length,
+                win_length=self.win_length,
+                window=self.window,
+                center=True,
+                normalized=False,
+                onesided=True,
+                return_complex=True
+           )
+            # 分离幅度和相位 [B, F, T]
+            mag = torch.abs(stft)
+            phase = torch.angle(stft)
 
         mix = torch.stack((mag, phase), dim=-1)
-        return mix.unsqueeze(1)
+        mixun = mix.unsqueeze(1)
+        print("STFT mixun.shape", mixun.shape)
+        return mixun
 
-
+#用于计算逆短时傅里叶变换,在 DCCRN_ 模型中用于恢复输出信号。
 class ISTFT(nn.Module):
     def __init__(self, n_fft, hop_length, win_length):
         super().__init__()
-        self.n_fft, self.hop_length, self.win_length = n_fft, hop_length, win_length
+        self.n_fft = n_fft
+        self.hop_length = hop_length
+        self.win_length = win_length
+        self.register_buffer("window", torch.hann_window(win_length))
 
+    #输入: 复数张量 x，形状为 (B, 2, F, T)。输出: 音频信号张量，形状为 (B, 1, T')。
     def forward(self, x):
+        # B, C, F, T, D = x.shape
+        # print("前ISTFT x.shape", x.shape)
+        # x = x.view(B, F, T, D)
+        # print("前ISTFT x.view(B, F, T, D).shape", x.shape)
+        # x_istft = istft(x, hop_length=self.hop_length, length=600)
+        # print("前ISTFT x_istft.shape", x_istft.shape)
+        # xv = x_istft.view(B, C, -1)
+        # print("前ISTFT xv.shape", xv.shape)
+        # return xv
         B, C, F, T, D = x.shape
-        x = x.view(B, F, T, D)
-        x_istft = istft(x, hop_length=self.hop_length, length=600)
-        return x_istft.view(B, C, -1)
 
+        # 第一步：调整形状 + 转换为复数
+        x = x.view(B, F, T, D)  # [400, 257, 7, 2]
+        complex_spec = torch.view_as_complex(x)  # [400, 257, 7]（复数）
+        # print("ISTFT x.shape",x.shape)
+        # print(self.n_fft / 2 + 1)
+        # x = x.squeeze(1)
+        # real = x[:, 0, :, :]  # 实部 [B, F, T]
+        # imag = x[:, 1, :, :]  # 虚部 [B, F, T]
+        # complex_x = torch.complex(real, imag)  # [B, F, T]
+        # print("ISTFT complex_x.shape",complex_x.shape)
+        print("ISTFT complex_spec.shape",complex_spec.shape)
+        signal = torch.istft(
+            complex_spec,
+            n_fft=self.n_fft,
+            hop_length=self.hop_length,
+            win_length=self.win_length,
+            window=self.window,
+            center=True,
+            normalized=False,  # 与STFT参数一致
+            onesided=True,  # 确保输入是单边谱
+            length=600
+        )
+        #signal.shape torch.Size([400, 600])
 
+        sun = signal.unsqueeze(1)
+        print("ISTFT sun.shape", sun.shape)
+        return sun
+
+#编码器模块，包含复数卷积、批归一化和PReLU激活函数。
 class Encoder(nn.Module):
     def __init__(self, in_channel, out_channel, kernel_size, stride, chw, padding=None):
         super().__init__()
@@ -46,6 +106,7 @@ class Encoder(nn.Module):
         self.bn = ComplexBatchNormal(chw[0], chw[1], chw[2])
         self.prelu = nn.PReLU()
 
+    #输入: 复数张量 x，形状为 (B, in_channel, F, T, 2)。输出: 编码后的复数张量，形状为 (B, out_channel, F', T', 2)。
     def forward(self, x, train):
         x = self.conv(x)
 
@@ -53,7 +114,7 @@ class Encoder(nn.Module):
         x = self.prelu(x)
         return x
 
-
+#解码器模块，包含复数转置卷积、批归一化和PReLU激活函数。
 class Decoder(nn.Module):
     def __init__(self, in_channel, out_channel, kernel_size, stride, chw, padding=None):
         super().__init__()
@@ -120,6 +181,7 @@ class DCCRN(nn.Module):
         self.decoders = nn.ModuleList(self.decoders)
         self.linear = ComplexConv2d(in_channel=2, out_channel=1, kernel_size=1, stride=1)
 
+    #输入: 复数张量 x，形状为 (B, 2, F, T, 2)。输出: 噪声掩码张量，形状为 (B, 1, F, T, 2)。计算过程: 依次通过编码器、LSTM层、全连接层和解码器，得到噪声掩码。
     def forward(self, x, train=True):
         skiper = []
         for index, encoder in enumerate(self.encoders):
@@ -141,7 +203,7 @@ class DCCRN(nn.Module):
         mask = torch.tanh(self.linear(p))
         return mask
 
-
+#包含STFT、DCCRN和ISTFT的完整模型，用于音频降噪。
 class DCCRN_(nn.Module):
     def __init__(self, n_fft, hop_len, net_params, batch_size, device, win_length):
         super().__init__()
@@ -149,9 +211,13 @@ class DCCRN_(nn.Module):
         self.DCCRN = DCCRN(net_params, device=device, batch_size=batch_size)
         self.istft = ISTFT(n_fft, hop_len, win_length=win_length)
 
+    #输入: 音频信号张量 signal，形状为 (B, 1, T)。输出: 降噪后的音频信号张量，形状为 (B, 1, T')。计算过程: 依次通过STFT、DCCRN和ISTFT，得到降噪后的音频信号。
     def forward(self, signal, train=True):
         stft = self.stft(signal)
+        print("DCCRN_ stft.shape", stft.shape)
         mask_predict = self.DCCRN(stft, train=train)
+        print("DCCRN_ mask_predict.shape", mask_predict.shape)
         predict = stft * mask_predict
+        print("DCCRN_ predict.shape", predict.shape)
         clean = self.istft(predict)
         return clean

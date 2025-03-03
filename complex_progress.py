@@ -1,11 +1,8 @@
-# coding: utf-8
-# Author：WangTianRui
-# Date ：2020/8/18 9:43
 
 import torch
 import torch.nn as nn
 
-
+# 一个自定义的卷积层，用于处理复数输入。在 Encoder 和 Decoder 中使用。
 class ComplexConv2d(nn.Module):
     def __init__(self, in_channel, out_channel, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True):
         super().__init__()
@@ -14,13 +11,15 @@ class ComplexConv2d(nn.Module):
         self.conv_im = nn.Conv2d(in_channel, out_channel, kernel_size, stride=stride, padding=padding,
                                  dilation=dilation, groups=groups, bias=bias)
 
+    #输入: 复数张量 x，形状为 (B, C, H, W, 2)。
+    #输出: 通过复数卷积得到的复数张量，形状为 (B, out_channel, H', W', 2)。
+    #计算过程: 分别对实部和虚部应用卷积，并通过特定的组合方式得到复数输出。
     def forward(self, x):
         real = self.conv_re(x[..., 0]) - self.conv_im(x[..., 1])
         imaginary = self.conv_re(x[..., 1]) + self.conv_im(x[..., 0])
         output = torch.stack((real, imaginary), dim=-1)
         return output
-
-
+#一个自定义的LSTM层，用于处理复数输入。在 DCCRN 模型中使用。
 class ComplexLSTM(nn.Module):
     def __init__(self, input_size, hidden_size, device, num_layers=1, bias=True, dropout=0, bidirectional=False):
         super().__init__()
@@ -32,6 +31,9 @@ class ComplexLSTM(nn.Module):
         self.lstm_im = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, bias=bias,
                                dropout=dropout, bidirectional=bidirectional)
 
+    #输入: 复数张量 x，形状为 (T, B, input_size, 2)。
+    # 输出: 通过复数LSTM得到的复数张量，形状为 (T, B, hidden_size, 2)。
+    # 计算过程: 分别对实部和虚部应用LSTM，并通过特定的组合方式得到复数输出。
     def forward(self, x):
         batch_size = x.size(1)
         h_real = torch.zeros(self.num_layer, batch_size, self.hidden_size).to(device=self.device)
@@ -51,13 +53,16 @@ class ComplexLSTM(nn.Module):
         output = torch.stack((real, imaginary), dim=-1)
         return output
 
-
+#一个自定义的全连接层，用于处理复数输入。在 DCCRN 模型中使用。
 class ComplexDense(nn.Module):
     def __init__(self, in_channel, out_channel):
         super().__init__()
         self.linear_read = nn.Linear(in_channel, out_channel)
         self.linear_imag = nn.Linear(in_channel, out_channel)
 
+    #输入: 复数张量 x，形状为 (B, in_channel, 2)。
+    # 输出: 通过复数全连接层得到的复数张量，形状为 (B, out_channel, 2)。
+    # 计算过程: 分别对实部和虚部应用全连接层，并组合得到复数输出。
     def forward(self, x):
         real = x[..., 0]
         imag = x[..., 1]
@@ -66,7 +71,7 @@ class ComplexDense(nn.Module):
         out = torch.stack((real, imag), dim=-1)
         return out
 
-
+#一个自定义的批归一化层，用于处理复数输入。在 Encoder 和 Decoder 中使用。
 class ComplexBatchNormal(nn.Module):
     def __init__(self, C, H, W, momentum=0.9):
         super().__init__()
@@ -82,6 +87,9 @@ class ComplexBatchNormal(nn.Module):
         self.Vri = None
         self.Vii = None
 
+    #输入: 复数张量 x，形状为 (B, C, H, W, 2)。
+    # 输出: 归一化后的复数张量，形状为 (B, C, H, W, 2)。
+    # 计算过程: 分别对实部和虚部进行批归一化，并应用可学习的参数进行缩放和偏移。
     def forward(self, x, train=True):
         B, C, H, W, D = x.size()
         real = x[..., 0]
@@ -154,8 +162,9 @@ def init_get(kind):
 def sqrt_init(shape):
     return (1 / torch.sqrt(torch.tensor(2))) * torch.ones(shape)
 
-
+#一个自定义的转置卷积层，用于处理复数输入。在 Decoder 中使用。
 class ComplexConvTranspose2d(nn.Module):
+    #创建两个实数转置卷积层 tconv_re 和 tconv_im。
     def __init__(self, in_channel, out_channel, kernel_size, stride=1, padding=0, output_padding=0, dilation=1,
                  groups=1, bias=True):
         super().__init__()

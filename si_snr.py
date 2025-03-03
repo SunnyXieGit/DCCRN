@@ -1,9 +1,7 @@
-# coding: utf-8
-# Author：WangTianRui
-# Date ：2020/10/2 14:50
+
 import torch
 
-
+#计算信号与估计信号之间的尺度不变信噪比（SI-SNR）。
 def si_snr(source, estimate_source, eps=1e-5):
     source = source.squeeze(1)
     estimate_source = estimate_source.squeeze(1)

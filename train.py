@@ -1,7 +1,3 @@
-# coding: utf-8
-# Author：WangTianRui
-# Date ：2020/9/29 21:47
-
 import wav_loader as loader
 import net_config as net_config
 import pickle
@@ -13,7 +9,8 @@ import os
 
 ########################################################################
 # Change the path to the path on your computer
-dns_home = r"F:\Traindata\DNS-Challenge\make_data"  # dir of dns-datas
+#dns_home = r"F:\Traindata\DNS-Challenge\make_data"  # dir of dns-datas
+dns_home = "D:\\33236\\PycharmProjects\\bishe\\DNS-Challenge\\datasets"
 save_file = "./logs"  # model save
 ########################################################################
 
@@ -43,5 +40,5 @@ dccrn = model_cov_bn.DCCRN_(
 optimizer = torch.optim.Adam(dccrn.parameters(), lr=lr)
 criterion = SiSnr()
 train_utils.train(model=dccrn, optimizer=optimizer, criterion=criterion, train_iter=train_dataloader,
-                  test_iter=test_dataloader, max_epoch=500, device=device, batch_size=batch_size, log_path=save_file,
+                  test_iter=test_dataloader, max_epoch=5, device=device, batch_size=batch_size, log_path=save_file,
                   just_test=False)

@@ -1,17 +1,14 @@
-# coding: utf-8
-# Author：WangTianRui
-# Date ：2020/10/3 14:09
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
-from pesq import pesq
+#from pesq import pesq
 import os
 import gc
 import sys
 import time
 
-
+#根据训练测试划分和DNS数据集路径获取文件名。
 def get_all_names(train_test, dns_home):
     train_names = train_test["train"]
     test_names = train_test["test"]
@@ -23,19 +20,19 @@ def get_all_names(train_test, dns_home):
 
     for name in train_names:
         code = str(name).split('_')[-1]
-        clean_file = os.path.join(dns_home, 'clean', 'clean_fileid_%s' % code)
+        clean_file = os.path.join(dns_home, 'clean_output', 'clean_fileid_%s' % code)
         noisy_file = os.path.join(dns_home, 'noisy', name)
         train_clean_names.append(clean_file)
         train_noisy_names.append(noisy_file)
     for name in test_names:
         code = str(name).split('_')[-1]
-        clean_file = os.path.join(dns_home, 'clean', 'clean_fileid_%s' % code)
+        clean_file = os.path.join(dns_home, 'clean_output', 'clean_fileid_%s' % code)
         noisy_file = os.path.join(dns_home, 'noisy', name)
         test_clean_names.append(clean_file)
         test_noisy_names.append(noisy_file)
     return train_noisy_names, train_clean_names, test_noisy_names, test_clean_names
 
-
+#在测试集上评估模型。
 def test_epoch(model, test_iter, device, criterion, batch_size, test_all=False):
     model.eval()
     with torch.no_grad():
@@ -55,7 +52,7 @@ def test_epoch(model, test_iter, device, criterion, batch_size, test_all=False):
                 break
     return loss_sum / i
 
-
+#训练模型并记录损失。
 def train(model, optimizer, criterion, train_iter, test_iter, max_epoch, device, batch_size, log_path, just_test=False):
     train_losses = []
     test_losses = []
@@ -116,7 +113,7 @@ def train(model, optimizer, criterion, train_iter, test_iter, max_epoch, device,
             if just_test:
                 break
 
-
+#划分训练集和测试集并保存文件名。
 def get_train_test_name(dns_home):
     all_name = []
     for i in os.walk(os.path.join(dns_home, "noisy")):
