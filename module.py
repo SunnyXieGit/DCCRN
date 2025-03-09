@@ -19,7 +19,6 @@ class STFT(nn.Module):
         # with torch.no_grad():
         #     x = self.stft(signal)
         #     mag, phase = audio_nn.magphase(x, power=1.)
-        #
         # mix = torch.stack((mag, phase), dim=-1)
         # return mix.unsqueeze(1)
         print("STFT signal.shape",signal.shape)

@@ -21,6 +21,15 @@ class SiSnr(object):
 
 
 if __name__ == '__main__':
-    source = torch.tensor([1, 2, 3, 4, 5, 1, 2, 3, 4, 5]).view(2, 5).float()
-    estimate = torch.tensor([[1.5, 2.5, 3.5, 4.5, 5.5], [1.5, 2.5, 3.5, 4.5, 5.5]])
-    print(si_snr(source, estimate))
+    # source = torch.tensor([1, 2, 3, 4, 5, 1, 2, 3, 4, 5]).view(2, 5).float()
+    # estimate = torch.tensor([[1.5, 2.5, 3.5, 4.5, 5.5], [1.5, 2.5, 3.5, 4.5, 5.5]])
+    # print(si_snr(source, estimate))
+    source1 = torch.randn(1, 16000)  # 模拟音频信号
+    estimate_source1 = torch.randn(1, 16000)
+    loss1 = si_snr(source1, estimate_source1)
+    print("1",loss1)  # 正常值应在 [-10, +20] 之间
+
+    source = torch.randn(1, 16000)  # 模拟音频信号
+    estimate_source = source.clone()
+    loss = si_snr(source, estimate_source)
+    print(loss)  # 理论值趋近于负无穷

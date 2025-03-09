@@ -1,5 +1,5 @@
 import wav_loader as loader
-import net_config as net_config
+import net_config
 import pickle
 from torch.utils.data import DataLoader
 import module as model_cov_bn
@@ -8,17 +8,15 @@ import train_utils
 import os
 
 ########################################################################
-# Change the path to the path on your computer
-#dns_home = r"F:\Traindata\DNS-Challenge\make_data"  # dir of dns-datas
 dns_home = "D:\\33236\\PycharmProjects\\bishe\\DNS-Challenge\\datasets"
-save_file = "./logs"  # model save
+save_file = "./logs"
 ########################################################################
 
 batch_size = 400  # calculate batch_size
 load_batch = 100  # load batch_size(not calculate)
 device = torch.device("cuda:0")  # device
 
-lr = 0.001  # learning_rate
+lr = 0.01  # learning_rate
 # load train and test name , train:test=4:1
 if os.path.exists(r'./train_test_names.data'):
     train_test = pickle.load(open('./train_test_names.data', "rb"))
@@ -29,7 +27,7 @@ train_noisy_names, train_clean_names, test_noisy_names, test_clean_names = \
 
 train_dataset = loader.WavDataset(train_noisy_names, train_clean_names, frame_dur=37.5)
 test_dataset = loader.WavDataset(test_noisy_names, test_clean_names, frame_dur=37.5)
-# dataloader
+# dataloader将数据集train_dataset按照一定的批量大小（batch_size）和随机打乱（shuffle）的方式生成一个可迭代对象，用于在训练神经网络时批量加载数据。
 train_dataloader = DataLoader(train_dataset, batch_size=load_batch, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=load_batch, shuffle=True)
 

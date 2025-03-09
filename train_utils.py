@@ -60,17 +60,47 @@ def train(model, optimizer, criterion, train_iter, test_iter, max_epoch, device,
         loss_sum = 0
         i = 0
         for step, (x, y) in enumerate(train_iter):
+            if epoch == 0 and step == 0:  # 仅检查第一个 batch
+                print("[Data Check] Raw input x shape:", x.shape)
+                print("[Data Check] Raw label y shape:", y.shape)
+                # 打印第一个样本的部分数据
+                print("First sample of x (first 15 values):", x[0, 0, :15])
+                print("First sample of y (first 15 values):", y[0, 0, :15])
             x = x.view(x.size(0) * x.size(1), x.size(2)).to(device).float()
             y = y.view(y.size(0) * y.size(1), y.size(2)).to(device).float()
+            if epoch == 0 and step == 0:  # 仅检查第一个 batch
+                print("Reshaped x shape:", x.shape)
+                print("Reshaped y shape:", y.shape)
+                # 检查是否 x 和 y 不同
+                if torch.allclose(x, y, atol=1e-4):
+                    print("⚠️ 警告：输入 x 和标签 y 完全相同！存在数据泄露！")
+                else:
+                    print("输入 x 和标签 y 不同，数据正常。")
             shuffle = torch.randperm(x.size(0))
             x = x[shuffle]
             y = y[shuffle]
+            # 计算余弦相似度（仅检查第一个样本）
+            if epoch == 0 and step == 0:
+                print("shuffled x shape:", x.shape)
+                print("shuffled y shape:", y.shape)
+                # 检查是否 x 和 y 不同
+                if torch.allclose(x, y, atol=1e-4):
+                    print("⚠️ 警告：输入 x 和标签 y 完全相同！存在数据泄露！")
+                else:
+                    print("输入 x 和标签 y 不同，数据正常。")
+                x_sample = x[0].view(1, -1)  # [1, T]
+                y_sample = y[0].view(1, -1)  # [1, T]
+                cosine_sim = torch.nn.functional.cosine_similarity(x_sample, y_sample, dim=1).item()
+                print(f"输入 x 和标签 y 的余弦相似度：{cosine_sim:.4f}")
+                if abs(cosine_sim) > 0.8:
+                    print("⚠️ 警告：输入和标签高度相似，可能存在数据泄露！")
             for index in range(0, x.size(0) - batch_size + 1, batch_size):
                 model.train()
                 x_item = x[index:index + batch_size, :].squeeze(0)
                 y_item = y[index:index + batch_size, :].squeeze(0)
                 optimizer.zero_grad()
                 y_p = model(x_item)
+                #criterion = SiSnr()
                 loss = criterion(source=y_item.unsqueeze(1), estimate_source=y_p)
                 if step == 0 and index == 0 and epoch == 0:
                     loss.backward()
